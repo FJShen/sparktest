@@ -22,7 +22,8 @@
     <scala.binary.version>2.12</scala.binary.version>
     <scala.compat.version>2.12</scala.compat.version>
     <spec2.version>4.2.0</spec2.version>
-    <slf4j.version>1.7.30</slf4j.version><spark.test.version>3.0.0</spark.test.version>
+    <slf4j.version>1.7.30</slf4j.version>
+    <spark.test.version>3.2.0</spark.test.version>
     <mainClass.name>com.nvidia.spark.rapids.tests.App</mainClass.name>
   </properties>
 
@@ -133,7 +134,8 @@
           <skipTests>true</skipTests>
         </configuration>
       </plugin>
-      <plugin>
+      <!--Enable this plugin for fat jar with all dependencies-->
+      <!--plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-assembly-plugin</artifactId>
         <version>2.4</version>
@@ -155,7 +157,7 @@
             </goals>
           </execution>
         </executions>
-      </plugin>
+      </plugin-->
       <plugin>
         <groupId>org.scalatest</groupId>
         <artifactId>scalatest-maven-plugin</artifactId>
