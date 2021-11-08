@@ -37,8 +37,18 @@ object TpchLikeBench extends BenchmarkSuite {
     TpchLikeSpark.setupAllOrc(spark, path)
   }
 
-  override def createDataFrame(spark: SparkSession, query: String): DataFrame = {
-    getQuery(query)(spark)
+  override def createDataFrame(spark: SparkSession, query: String): Option[DataFrame] = {
+    val regex_for_query_name = """q(\d{1}|1\d{1}|2\d[012])""".r  //q1 to q22
+
+    query match {
+      case "snapshot" => {
+        //call a script to read /proc file system
+        None
+      }
+      case regex_for_query_name(query_name) => {Some(getQuery(query)(spark))}
+      case _ => {None}
+    }
+
   }
 
   private def getQuery(query: String)(spark: SparkSession) = {

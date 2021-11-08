@@ -37,8 +37,8 @@ object TpcxbbLikeBench  extends BenchmarkSuite {
     TpcxbbLikeSpark.setupAllOrc(spark, path)
   }
 
-  override def createDataFrame(spark: SparkSession, query: String): DataFrame = {
-    getQuery(query)(spark)
+  override def createDataFrame(spark: SparkSession, query: String): Option[DataFrame] = {
+    Some(getQuery(query)(spark))
   }
 
   def getQuery(query: String): SparkSession => DataFrame = {

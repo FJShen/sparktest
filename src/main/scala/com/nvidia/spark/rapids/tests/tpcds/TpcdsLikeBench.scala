@@ -37,8 +37,8 @@ class TpcdsLikeBench(val appendDat: Boolean) extends BenchmarkSuite {
     TpcdsLikeSpark.setupAllOrc(spark, path, appendDat)
   }
 
-  override def createDataFrame(spark: SparkSession, query: String): DataFrame = {
-    TpcdsLikeSpark.run(spark, query)
+  override def createDataFrame(spark: SparkSession, query: String): Option[DataFrame] = {
+    Some(TpcdsLikeSpark.run(spark, query))
   }
 }
 

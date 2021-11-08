@@ -44,7 +44,7 @@ object BenchUtils {
   /** Perform benchmark of calling collect */
   def collect(
       spark: SparkSession,
-      createDataFrame: SparkSession => DataFrame,
+      createDataFrame: SparkSession => Option[DataFrame],
       queryDescription: String,
       filenameStub: String,
       iterations: Int,
@@ -63,7 +63,7 @@ object BenchUtils {
   /** Perform benchmark of writing results to CSV */
   def writeCsv(
       spark: SparkSession,
-      createDataFrame: SparkSession => DataFrame,
+      createDataFrame: SparkSession => Option[DataFrame],
       queryDescription: String,
       filenameStub: String,
       iterations: Int,
@@ -84,7 +84,7 @@ object BenchUtils {
   /** Perform benchmark of writing results to ORC */
   def writeOrc(
       spark: SparkSession,
-      createDataFrame: SparkSession => DataFrame,
+      createDataFrame: SparkSession => Option[DataFrame],
       queryDescription: String,
       filenameStub: String,
       iterations: Int,
@@ -105,7 +105,7 @@ object BenchUtils {
   /** Perform benchmark of writing results to Parquet */
   def writeParquet(
       spark: SparkSession,
-      createDataFrame: SparkSession => DataFrame,
+      createDataFrame: SparkSession => Option[DataFrame],
       queryDescription: String,
       filenameStub: String,
       iterations: Int,
@@ -140,7 +140,7 @@ object BenchUtils {
    */
   def runBench(
       spark: SparkSession,
-      createDataFrame: SparkSession => DataFrame,
+      createDataFrame: SparkSession => Option[DataFrame],
       resultsAction: ResultsAction,
       queryDescription: String,
       filenameStub: String,
@@ -183,7 +183,7 @@ object BenchUtils {
       try {
         //After non-exhaustively reading the code, I believe the execution of the query does not happen here.
         //The execution happens lazily when you refer to the results, which happens somewhere down the call stack of df.collect().
-        df = createDataFrame(spark)
+        df = createDataFrame(spark).getOrElse(spark.emptyDataFrame)
 
         ITT.itt_frame_begin_v3(query_domain_itt, 0);
         resultsAction match {
@@ -725,7 +725,7 @@ trait BenchmarkSuite {
   def setupAllParquet(spark: SparkSession, path: String)
   def setupAllCSV(spark: SparkSession, path: String)
   def setupAllOrc(spark: SparkSession, path: String)
-  def createDataFrame(spark: SparkSession, query: String): DataFrame
+  def createDataFrame(spark: SparkSession, query: String): Option[DataFrame]
 }
 
 /** Top level benchmark report class */

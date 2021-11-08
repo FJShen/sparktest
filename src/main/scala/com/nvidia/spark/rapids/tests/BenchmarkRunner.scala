@@ -16,19 +16,15 @@
 package com.nvidia.spark.rapids.tests
 
 import java.net.URI
-
 import scala.util.{Failure, Success, Try}
-
-import com.nvidia.spark.rapids.tests.common.{BenchmarkReport, BenchmarkSuite, BenchUtils}
+import com.nvidia.spark.rapids.tests.common.{BenchUtils, BenchmarkReport, BenchmarkSuite}
 import com.nvidia.spark.rapids.tests.tpcds.TpcdsLikeBench
 import com.nvidia.spark.rapids.tests.tpch.TpchLikeBench
 import com.nvidia.spark.rapids.tests.tpcxbb.TpcxbbLikeBench
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
-import org.rogach.scallop.ScallopConf
-
+import org.rogach.scallop.{ScallopConf, listArgConverter}
 import org.apache.spark.sql.{SaveMode, SparkSession}
-
 import com.fangjia.itt.ITT
 
 /**
@@ -66,29 +62,27 @@ object BenchmarkRunner {
         }
 
         val runner = new BenchmarkRunner(bench)
-        println(s"*** RUNNING ${bench.name()} QUERY ${conf.query()}")
-        //ITT.itt_resume()
+        val query_list : List[String] = runner.searchAndReplace(conf.query())
 
-        if(conf.query() == "all" && conf.benchmark().toLowerCase == "tpch"){
-          //run all queries for tpch
-          for(i <- 0 until conf.iterations()){
-            for(query_id <- 1 to 22){
-              runner.collect(spark,
-                s"q${query_id}",
-                1,
-                summaryFilePrefix = conf.summaryFilePrefix.toOption,
-                gcBetweenRuns = conf.gcBetweenRuns())
-            }
-          }
+        if(query_list.length>1){
+          println(s"*** RUNNING ${bench.name()} QUERY ${query_list}")
+          runner.collectAll(
+            spark,
+            query_list,
+            conf.iterations(),
+            summaryFilePrefix = conf.summaryFilePrefix.toOption,
+            gcBetweenRuns = conf.gcBetweenRuns())
         }
+        else{
+          println(s"*** RUNNING ${bench.name()} QUERY ${conf.query().head}")
+          //ITT.itt_resume()
 
-        else {
           val report = Try(conf.output.toOption match {
             case Some(path) => conf.outputFormat().toLowerCase match {
               case "parquet" =>
                 runner.writeParquet(
                   spark,
-                  conf.query(),
+                  query_list.head,
                   path,
                   iterations = conf.iterations(),
                   summaryFilePrefix = conf.summaryFilePrefix.toOption,
@@ -96,7 +90,7 @@ object BenchmarkRunner {
               case "csv" =>
                 runner.writeCsv(
                   spark,
-                  conf.query(),
+                  query_list.head,
                   path,
                   iterations = conf.iterations(),
                   summaryFilePrefix = conf.summaryFilePrefix.toOption,
@@ -104,7 +98,7 @@ object BenchmarkRunner {
               case "orc" =>
                 runner.writeOrc(
                   spark,
-                  conf.query(),
+                  query_list.head,
                   path,
                   iterations = conf.iterations(),
                   summaryFilePrefix = conf.summaryFilePrefix.toOption,
@@ -115,7 +109,7 @@ object BenchmarkRunner {
             case _ =>
               runner.collect(
                 spark,
-                conf.query(),
+                query_list.head,
                 conf.iterations(),
                 summaryFilePrefix = conf.summaryFilePrefix.toOption,
                 gcBetweenRuns = conf.gcBetweenRuns())
@@ -139,8 +133,11 @@ object BenchmarkRunner {
               System.err.println(e.getMessage)
               System.exit(-1)
           }
+
+          //ITT.itt_pause()
         }
-        //ITT.itt_pause()
+
+
       case _ =>
         System.err.println(s"Invalid benchmark name: ${conf.benchmark()}. Supported benchmarks " +
             s"are ${benchmarks.keys.mkString(",")}")
@@ -184,6 +181,27 @@ class BenchmarkRunner(val bench: BenchmarkSuite) {
       summaryFilePrefix.getOrElse(s"${bench.shortName()}-$query-collect"),
       iterations,
       gcBetweenRuns)
+  }
+
+  def collectAll(
+                  spark: SparkSession,
+                  query_list: List[String],
+                  iterations: Int = 3,
+                  summaryFilePrefix: Option[String] = None,
+                  gcBetweenRuns: Boolean = false): Unit = {
+    for(idx <- 1 to iterations){
+      query_list.foreach{ current_query =>
+        BenchUtils.collect(
+          spark,
+          spark => bench.createDataFrame(spark, current_query),
+          current_query,
+          summaryFilePrefix.getOrElse(s"${bench.shortName()}-$current_query-collect"),
+          1,
+          gcBetweenRuns)
+      }
+    }
+
+
   }
 
   /**
@@ -299,14 +317,29 @@ class BenchmarkRunner(val bench: BenchmarkSuite) {
       mode,
       writeOptions)
   }
+
+  def searchAndReplace(query: List[String]) : List[String] = {
+    query.foldLeft(List[String]()){(left_list, x) =>
+      val list_to_add = x match {
+        case "all" => {
+          (1 to 22).toList.map(id => s"q${id}")
+        }
+        case _ => {List(x)}
+      }
+      left_list ++: list_to_add
+    }
+  }
+
 }
 
 class BenchmarkConf(arguments: Seq[String]) extends ScallopConf(arguments) {
+  val myStrConverter = listArgConverter[String](_.toString)
+
   val benchmark = opt[String](required = true)
   val input = opt[String](required = true)
   val inputFormat = opt[String](required = true)
   val appendDat = opt[Boolean](required = false, default = Some(false))
-  val query = opt[String](required = true)
+  val query = opt[List[String]](required = true)(myStrConverter)
   val iterations = opt[Int](default = Some(3))
   val output = opt[String](required = false)
   val outputFormat = opt[String](required = false)
