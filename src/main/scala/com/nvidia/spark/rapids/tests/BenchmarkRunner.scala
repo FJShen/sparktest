@@ -68,61 +68,77 @@ object BenchmarkRunner {
         val runner = new BenchmarkRunner(bench)
         println(s"*** RUNNING ${bench.name()} QUERY ${conf.query()}")
         //ITT.itt_resume()
-        val report = Try(conf.output.toOption match {
-          case Some(path) => conf.outputFormat().toLowerCase match {
-            case "parquet" =>
-              runner.writeParquet(
-                spark,
-                conf.query(),
-                path,
-                iterations = conf.iterations(),
-                summaryFilePrefix = conf.summaryFilePrefix.toOption,
-                gcBetweenRuns = conf.gcBetweenRuns())
-            case "csv" =>
-              runner.writeCsv(
-                spark,
-                conf.query(),
-                path,
-                iterations = conf.iterations(),
-                summaryFilePrefix = conf.summaryFilePrefix.toOption,
-                gcBetweenRuns = conf.gcBetweenRuns())
-            case "orc" =>
-              runner.writeOrc(
-                spark,
-                conf.query(),
-                path,
-                iterations = conf.iterations(),
-                summaryFilePrefix = conf.summaryFilePrefix.toOption,
-                gcBetweenRuns = conf.gcBetweenRuns())
-            case other =>
-              throw new IllegalArgumentException(s"Invalid or unspecified output format: $other")
-          }
-          case _ =>
-            runner.collect(
-              spark,
-              conf.query(),
-              conf.iterations(),
-              summaryFilePrefix = conf.summaryFilePrefix.toOption,
-              gcBetweenRuns = conf.gcBetweenRuns())
-        })
-        //ITT.itt_pause()
 
-        report match {
-          case Success(report) =>
-            if (conf.uploadUri.isSupplied) {
-              println(s"Uploading ${report.filename} to " +
+        if(conf.query() == "all" && conf.benchmark().toLowerCase == "tpch"){
+          //run all queries for tpch
+          for(i <- 0 until conf.iterations()){
+            for(query_id <- 1 to 22){
+              runner.collect(spark,
+                s"q${query_id}",
+                1,
+                summaryFilePrefix = conf.summaryFilePrefix.toOption,
+                gcBetweenRuns = conf.gcBetweenRuns())
+            }
+          }
+        }
+
+        else {
+          val report = Try(conf.output.toOption match {
+            case Some(path) => conf.outputFormat().toLowerCase match {
+              case "parquet" =>
+                runner.writeParquet(
+                  spark,
+                  conf.query(),
+                  path,
+                  iterations = conf.iterations(),
+                  summaryFilePrefix = conf.summaryFilePrefix.toOption,
+                  gcBetweenRuns = conf.gcBetweenRuns())
+              case "csv" =>
+                runner.writeCsv(
+                  spark,
+                  conf.query(),
+                  path,
+                  iterations = conf.iterations(),
+                  summaryFilePrefix = conf.summaryFilePrefix.toOption,
+                  gcBetweenRuns = conf.gcBetweenRuns())
+              case "orc" =>
+                runner.writeOrc(
+                  spark,
+                  conf.query(),
+                  path,
+                  iterations = conf.iterations(),
+                  summaryFilePrefix = conf.summaryFilePrefix.toOption,
+                  gcBetweenRuns = conf.gcBetweenRuns())
+              case other =>
+                throw new IllegalArgumentException(s"Invalid or unspecified output format: $other")
+            }
+            case _ =>
+              runner.collect(
+                spark,
+                conf.query(),
+                conf.iterations(),
+                summaryFilePrefix = conf.summaryFilePrefix.toOption,
+                gcBetweenRuns = conf.gcBetweenRuns())
+          })
+          //ITT.itt_pause()
+
+          report match {
+            case Success(report) =>
+              if (conf.uploadUri.isSupplied) {
+                println(s"Uploading ${report.filename} to " +
                   s"${conf.uploadUri()}/${report.filename}")
 
-              val hadoopConf = spark.sparkContext.hadoopConfiguration
-              val fs = FileSystem.newInstance(new URI(conf.uploadUri()), hadoopConf)
-              fs.copyFromLocalFile(
-                new Path(report.filename),
-                new Path(conf.uploadUri(), report.filename))
-            }
+                val hadoopConf = spark.sparkContext.hadoopConfiguration
+                val fs = FileSystem.newInstance(new URI(conf.uploadUri()), hadoopConf)
+                fs.copyFromLocalFile(
+                  new Path(report.filename),
+                  new Path(conf.uploadUri(), report.filename))
+              }
 
-          case Failure(e) =>
-            System.err.println(e.getMessage)
-            System.exit(-1)
+            case Failure(e) =>
+              System.err.println(e.getMessage)
+              System.exit(-1)
+          }
         }
         //ITT.itt_pause()
       case _ =>
