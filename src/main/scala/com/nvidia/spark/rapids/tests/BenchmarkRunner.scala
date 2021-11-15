@@ -25,7 +25,6 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.rogach.scallop.{ScallopConf, listArgConverter}
 import org.apache.spark.sql.{SaveMode, SparkSession}
-import com.fangjia.itt.ITT
 
 /**
  * The BenchmarkRunner can be submitted using spark-submit to run any of the TPC-* benchmarks.

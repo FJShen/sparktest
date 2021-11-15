@@ -29,11 +29,6 @@
 
   <dependencies>
     <dependency>
-      <groupId>com.fangjia.itt</groupId>
-      <artifactId>itt_jni</artifactId>
-      <version>1.0</version>
-    </dependency>
-    <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>jul-to-slf4j</artifactId>
       <version>${slf4j.version}</version>

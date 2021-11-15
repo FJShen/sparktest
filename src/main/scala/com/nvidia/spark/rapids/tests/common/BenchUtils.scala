@@ -36,9 +36,6 @@ import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.types.DataTypes
 import org.apache.spark.sql.util.QueryExecutionListener
 
-//import ITT JNI
-import com.fangjia.itt.{ITT, ITT_Domain}
-
 object BenchUtils {
 
   /** Perform benchmark of calling collect */
@@ -147,8 +144,6 @@ object BenchUtils {
       iterations: Int,
       gcBetweenRuns: Boolean
   ): BenchmarkReport = {
-    val query_domain_itt: ITT_Domain = ITT.itt_domain_create(queryDescription)
-    ITT.itt_domain_register(queryDescription, query_domain_itt)
 
     assert(iterations > 0)
 
@@ -161,7 +156,7 @@ object BenchUtils {
     val queryTimes = new ListBuffer[Long]()
     for (i <- 0 until iterations) {
       spark.sparkContext.setJobDescription(s"Benchmark Run: query=$queryDescription; iteration=$i")
-      
+
       // cause Spark to call unregisterShuffle
       if (i > 0 && gcBetweenRuns) {
         // we must null out the dataframe reference to allow
@@ -179,13 +174,12 @@ object BenchUtils {
       println(s"*** Start iteration $i:")
       val start = System.nanoTime()
 
-      
+
       try {
         //After non-exhaustively reading the code, I believe the execution of the query does not happen here.
         //The execution happens lazily when you refer to the results, which happens somewhere down the call stack of df.collect().
         df = createDataFrame(spark).getOrElse(spark.emptyDataFrame)
 
-        ITT.itt_frame_begin_v3(query_domain_itt, 0);
         resultsAction match {
           case Collect() => df.collect()
           case WriteCsv(path, mode, options) =>
@@ -195,7 +189,6 @@ object BenchUtils {
           case WriteParquet(path, mode, options) =>
             ensureValidColumnNames(df).write.mode(mode).options(options).parquet(path)
         }
-        ITT.itt_frame_end_v3(query_domain_itt, 0);
 
         val end = System.nanoTime()
         val elapsed = NANOSECONDS.toMillis(end - start)
@@ -211,7 +204,6 @@ object BenchUtils {
           exceptions.append(BenchUtils.toString(e))
           e.printStackTrace()
       }
-      ITT.itt_frame_end_v3(query_domain_itt, 0); //this lines acts as a catch-all for any profiling collection that is not paused yet
     }
 
     // only show query times if there were no failed queries
