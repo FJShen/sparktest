@@ -25,6 +25,8 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.rogach.scallop.{ScallopConf, listArgConverter}
 import org.apache.spark.sql.{SaveMode, SparkSession}
+import com.fjshen.MetricCollector._
+import org.apache.hadoop.metrics2.MetricsCollector
 
 /**
  * The BenchmarkRunner can be submitted using spark-submit to run any of the TPC-* benchmarks.
@@ -188,6 +190,8 @@ class BenchmarkRunner(val bench: BenchmarkSuite) {
                   iterations: Int = 3,
                   summaryFilePrefix: Option[String] = None,
                   gcBetweenRuns: Boolean = false): Unit = {
+    val mc = new MetricCollector()
+
     for(idx <- 1 to iterations){
       query_list.foreach{ current_query =>
         BenchUtils.collect(
@@ -199,7 +203,6 @@ class BenchmarkRunner(val bench: BenchmarkSuite) {
           gcBetweenRuns)
       }
     }
-
 
   }
 
@@ -317,6 +320,7 @@ class BenchmarkRunner(val bench: BenchmarkSuite) {
       writeOptions)
   }
 
+  //expands all occurences of "all" to all queries of TPCH
   def searchAndReplace(query: List[String]) : List[String] = {
     query.foldLeft(List[String]()){(left_list, x) =>
       val list_to_add = x match {
