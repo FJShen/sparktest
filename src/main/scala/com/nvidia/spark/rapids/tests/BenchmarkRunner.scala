@@ -26,7 +26,6 @@ import org.apache.hadoop.fs.{FileSystem, Path}
 import org.rogach.scallop.{ScallopConf, listArgConverter}
 import org.apache.spark.sql.{SaveMode, SparkSession}
 import com.fjshen.MetricCollector._
-import org.apache.hadoop.metrics2.MetricsCollector
 
 /**
  * The BenchmarkRunner can be submitted using spark-submit to run any of the TPC-* benchmarks.
@@ -194,15 +193,20 @@ class BenchmarkRunner(val bench: BenchmarkSuite) {
 
     for(idx <- 1 to iterations){
       query_list.foreach{ current_query =>
-        BenchUtils.collect(
+        mc.with_measurement{
+          BenchUtils.collect(
           spark,
           spark => bench.createDataFrame(spark, current_query),
           current_query,
           summaryFilePrefix.getOrElse(s"${bench.shortName()}-$current_query-collect"),
           1,
           gcBetweenRuns)
+        }
+        
       }
     }
+
+    print(mc.list_of_diff)
 
   }
 
