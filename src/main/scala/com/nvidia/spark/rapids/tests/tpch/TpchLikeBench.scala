@@ -38,7 +38,7 @@ object TpchLikeBench extends BenchmarkSuite {
   }
 
   override def createDataFrame(spark: SparkSession, query: String): Option[DataFrame] = {
-    val regex_for_query_name = """q(\d{1}|1\d{1}|2\d[012])""".r  //q1 to q22
+    val regex_for_query_name = """q(\d{1}|1\d{1}|2[012])""".r  //q1 to q22
 
     query match {
       case "snapshot" => {
